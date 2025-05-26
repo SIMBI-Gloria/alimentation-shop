@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { ShoppingCart, Package, Users, BarChart3, Plus, Minus, Search, ShoppingBag, DollarSign, AlertCircle, LogOut, Eye, UserX, UserPlus, Lock, Trash2, Edit, Settings, Key } from 'lucide-react';
+import React, { useState } from 'react';
+import { ShoppingCart, Package, Users, BarChart3, Plus, Minus, Search, ShoppingBag, DollarSign, AlertCircle, LogOut, UserPlus, Trash2, Edit, Settings, Key } from 'lucide-react';
 
 const AlimentationShop = () => {
   // Authentication States
@@ -31,7 +31,7 @@ const AlimentationShop = () => {
   ]);
   
   const [cart, setCart] = useState([]);
-  const [customers, setCustomers] = useState([
+  const [customers] = useState([
     { id: 1, name: 'Marie Uwimana', phone: '078-123-4567', totalPurchases: 125000 },
     { id: 2, name: 'Jean Nzeyimana', phone: '079-987-6543', totalPurchases: 98000 },
     { id: 3, name: 'Sophie Mukamana', phone: '072-555-1234', totalPurchases: 156000 },
@@ -278,7 +278,6 @@ const AlimentationShop = () => {
       product.price.toString().includes(globalSearch)) : true)
   );
 
-  const totalRevenue = sales.reduce((sum, sale) => sum + sale.total, 0);
   const lowStockProducts = products.filter(product => product.stock < 10);
   const mySales = currentUser?.role === 'sales' ? sales.filter(sale => sale.soldById === currentUser.id) : sales;
 
