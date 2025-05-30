@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ShoppingCart, Package, Users, BarChart3, Plus, Minus, Search, ShoppingBag, DollarSign, AlertCircle, LogOut, UserPlus, Trash2, Edit, Settings, Key } from 'lucide-react';
 
+
 const AlimentationShop = () => {
   // Authentication States
   const [currentUser, setCurrentUser] = useState(null);
@@ -52,6 +53,9 @@ const AlimentationShop = () => {
   const [deleteConfirm, setDeleteConfirm] = useState({ productId: null, productName: '' });
   const [passwordChange, setPasswordChange] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [showPasswordChange, setShowPasswordChange] = useState(false);
+
+  // Add a notification state
+  const [notifications, setNotifications] = useState([]);
 
   // Authentication Functions
   const handleLogin = () => {
@@ -112,6 +116,10 @@ const AlimentationShop = () => {
   // Cart and Sales Functions
   const addToCart = (product) => {
     if (product.stock === 0) {
+      setNotifications(notifications => [
+        ...notifications,
+        { type: 'error', message: `Product '${product.name}' is out of stock!` }
+      ]);
       alert('Product out of stock!');
       return;
     }
@@ -172,13 +180,21 @@ const AlimentationShop = () => {
     };
     
     // Update stock automatically
-    setProducts(products.map(product => {
+    const updatedProducts = products.map(product => {
       const cartItem = cart.find(item => item.id === product.id);
       if (cartItem) {
-        return { ...product, stock: product.stock - cartItem.quantity };
+        const newStock = product.stock - cartItem.quantity;
+        if (newStock === 0) {
+          setNotifications(notifications => [
+            ...notifications,
+            { type: 'warning', message: `Product '${product.name}' is now out of stock!` }
+          ]);
+        }
+        return { ...product, stock: newStock };
       }
       return product;
-    }));
+    });
+    setProducts(updatedProducts);
     
     setSales([newSale, ...sales]);
     setCart([]);
@@ -288,8 +304,8 @@ const AlimentationShop = () => {
         <div className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-md">
           <div className="text-center mb-8">
             <ShoppingBag className="text-orange-500 w-16 h-16 mx-auto mb-4" />
-            <h1 className="text-3xl font-bold text-gray-800">🛒 Shop Manager</h1>
-            <p className="text-gray-600 mt-2">Please login to continue</p>
+            <h1 className="text-4xl md:text-5xl font-extrabold bg-gradient-to-r from-orange-500 via-red-500 to-yellow-400 bg-clip-text text-transparent drop-shadow-lg mb-2 tracking-wide uppercase">TSM SHOP SYSTEM</h1>
+            <p className="text-gray-600 mt-2 text-lg font-medium">Please login to continue</p>
           </div>
           
           <div className="space-y-4">
@@ -331,7 +347,7 @@ const AlimentationShop = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <ShoppingBag className="text-orange-500 w-8 h-8" />
-              <h1 className="text-2xl font-bold text-gray-800">🛒 Shop Manager</h1>
+              <h1 className="text-2xl md:text-3xl font-extrabold bg-gradient-to-r from-orange-500 via-red-500 to-yellow-400 bg-clip-text text-transparent drop-shadow-lg tracking-wide uppercase">TSM SHOP SYSTEM</h1>
             </div>
             <div className="flex items-center space-x-4">
               <div className="text-right">
@@ -378,6 +394,21 @@ const AlimentationShop = () => {
           </div>
         </div>
       </div>
+
+      {notifications.length > 0 && (
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-md">
+          {notifications.map((note, idx) => (
+            <div
+              key={idx}
+              className={`mb-2 px-4 py-3 rounded shadow-lg text-white font-semibold ${
+                note.type === 'error' ? 'bg-red-500' : 'bg-yellow-500'
+              }`}
+            >
+              {note.message}
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="container mx-auto px-6 py-8">
         {/* Point of Sale */}
