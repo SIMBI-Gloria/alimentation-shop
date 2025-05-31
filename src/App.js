@@ -49,14 +49,15 @@ const AlimentationShop = () => {
   const [globalSearch, setGlobalSearch] = useState('');
   const [newProduct, setNewProduct] = useState({ name: '', category: '', price: '', stock: '', image: '' });
   const [showAddProduct, setShowAddProduct] = useState(false);
-  const [stockUpdate, setStockUpdate] = useState({ productId: null, newStock: '' });
-  const [priceUpdate, setPriceUpdate] = useState({ productId: null, newPrice: '' });
   const [deleteConfirm, setDeleteConfirm] = useState({ productId: null, productName: '' });
   const [passwordChange, setPasswordChange] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [showPasswordChange, setShowPasswordChange] = useState(false);
 
   // Add a notification state
   const [notifications, setNotifications] = useState([]);
+
+  // Password visibility state for all password fields
+  const [showPassword, setShowPassword] = useState({ login: false, current: false, new: false, confirm: false });
 
   // Authentication Functions
   const handleLogin = () => {
@@ -264,25 +265,6 @@ const AlimentationShop = () => {
       ...notifications,
       { type: 'success', message: `Product '${editingProduct.name}' updated successfully!` }
     ]);
-  };
-
-  const updateStock = (productId, newStock) => {
-    setProducts(products.map(product => 
-      product.id === productId 
-        ? { ...product, stock: parseInt(newStock) }
-        : product
-    ));
-    setStockUpdate({ productId: null, newStock: '' });
-  };
-
-  const updatePrice = (productId, newPrice) => {
-    setProducts(products.map(product =>
-      product.id === productId
-        ? { ...product, price: parseInt(newPrice) }
-        : product
-    ));
-    setPriceUpdate({ productId: null, newPrice: '' });
-    alert('Price updated successfully!');
   };
 
   const deleteProduct = (productId) => {
