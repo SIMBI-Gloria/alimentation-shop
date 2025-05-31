@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingCart, Package, Users, BarChart3, Plus, Minus, Search, ShoppingBag, DollarSign, AlertCircle, LogOut, UserPlus, Trash2, Edit, Settings, Key, UserMinus } from 'lucide-react';
+import { ShoppingCart, Package, Users, BarChart3, Plus, Minus, Search, ShoppingBag, DollarSign, AlertCircle, LogOut, UserPlus, Trash2, Edit, Settings, Key, UserMinus, Eye, EyeOff } from 'lucide-react';
 
 
 const AlimentationShop = () => {
@@ -370,14 +370,24 @@ const AlimentationShop = () => {
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
               />
             </div>
-            <div>
+            <div className="relative">
               <input
-                type="password"
+                type={showPassword.login ? "text" : "password"}
                 placeholder="Password"
                 value={loginForm.password}
                 onChange={(e) => setLoginForm({...loginForm, password: e.target.value})}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 pr-12"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(p => ({...p, login: !p.login}))}
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 focus:outline-none"
+                tabIndex={-1}
+                aria-label={showPassword.login ? 'Hide password' : 'Show password'}
+                style={{background: 'none', border: 'none', padding: 0, margin: 0, position: 'absolute'}}
+              >
+                {showPassword.login ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
             </div>
             <button
               onClick={handleLogin}
@@ -741,29 +751,29 @@ const AlimentationShop = () => {
                 <table className="w-full">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Price</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Stock</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                      <th className="px-2 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
+                      <th className="px-2 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
+                      <th className="px-2 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">Price</th>
+                      <th className="px-2 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">Stock</th>
+                      <th className="px-2 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                       {currentUser.role === 'boss' && (
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                        <th className="px-2 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                       )}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
+                  <tbody className="divide-y divide-gray-200 text-xs sm:text-sm">
                     {filteredProducts.map(product => (
                       <tr key={product.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center space-x-3">
+                        <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap break-words">
+                          <div className="flex items-center space-x-2 sm:space-x-3">
                             <span className="text-2xl">{product.image}</span>
                             <span className="font-medium">{product.name}</span>
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-gray-600">{product.category}</td>
-                        <td className="px-6 py-4 whitespace-nowrap font-semibold text-orange-600">{product.price.toLocaleString()} RWF</td>
-                        <td className="px-6 py-4 whitespace-nowrap">{product.stock}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-gray-600 break-words">{product.category}</td>
+                        <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap font-semibold text-orange-600">{product.price.toLocaleString()} RWF</td>
+                        <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap">{product.stock}</td>
+                        <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap">
                           <span className={`px-2 py-1 text-xs rounded-full ${
                             product.stock === 0 ? 'bg-red-100 text-red-800' :
                             product.stock < 5 ? 'bg-red-100 text-red-800' :
@@ -776,7 +786,7 @@ const AlimentationShop = () => {
                           </span>
                         </td>
                         {currentUser.role === 'boss' && (
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap">
                             <div className="flex items-center space-x-2">
                               <button
                                 onClick={() => startEditProduct(product)}
@@ -1085,27 +1095,63 @@ const AlimentationShop = () => {
               {showPasswordChange && (
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <input
-                      type="password"
-                      placeholder="Current Password"
-                      value={passwordChange.currentPassword}
-                      onChange={(e) => setPasswordChange({...passwordChange, currentPassword: e.target.value})}
-                      className="px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500"
-                    />
-                    <input
-                      type="password"
-                      placeholder="New Password"
-                      value={passwordChange.newPassword}
-                      onChange={(e) => setPasswordChange({...passwordChange, newPassword: e.target.value})}
-                      className="px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500"
-                    />
-                    <input
-                      type="password"
-                      placeholder="Confirm New Password"
-                      value={passwordChange.confirmPassword}
-                      onChange={(e) => setPasswordChange({...passwordChange, confirmPassword: e.target.value})}
-                      className="px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500"
-                    />
+                    <div className="relative">
+                      <input
+                        type={showPassword.current ? "text" : "password"}
+                        placeholder="Current Password"
+                        value={passwordChange.currentPassword}
+                        onChange={(e) => setPasswordChange({...passwordChange, currentPassword: e.target.value})}
+                        className="px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 pr-12"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(p => ({...p, current: !p.current}))}
+                        className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 focus:outline-none"
+                        tabIndex={-1}
+                        aria-label={showPassword.current ? 'Hide password' : 'Show password'}
+                        style={{background: 'none', border: 'none', padding: 0, margin: 0, position: 'absolute'}}
+                      >
+                        {showPassword.current ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type={showPassword.new ? "text" : "password"}
+                        placeholder="New Password"
+                        value={passwordChange.newPassword}
+                        onChange={(e) => setPasswordChange({...passwordChange, newPassword: e.target.value})}
+                        className="px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 pr-12"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(p => ({...p, new: !p.new}))}
+                        className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 focus:outline-none"
+                        tabIndex={-1}
+                        aria-label={showPassword.new ? 'Hide password' : 'Show password'}
+                        style={{background: 'none', border: 'none', padding: 0, margin: 0, position: 'absolute'}}
+                      >
+                        {showPassword.new ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type={showPassword.confirm ? "text" : "password"}
+                        placeholder="Confirm New Password"
+                        value={passwordChange.confirmPassword}
+                        onChange={(e) => setPasswordChange({...passwordChange, confirmPassword: e.target.value})}
+                        className="px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 pr-12"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(p => ({...p, confirm: !p.confirm}))}
+                        className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 focus:outline-none"
+                        tabIndex={-1}
+                        aria-label={showPassword.confirm ? 'Hide password' : 'Show password'}
+                        style={{background: 'none', border: 'none', padding: 0, margin: 0, position: 'absolute'}}
+                      >
+                        {showPassword.confirm ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
+                    </div>
                   </div>
                   <button
                     onClick={changePassword}
