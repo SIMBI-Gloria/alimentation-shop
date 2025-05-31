@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { ShoppingCart, Package, Users, BarChart3, Plus, Minus, Search, ShoppingBag, DollarSign, AlertCircle, LogOut, UserPlus, Trash2, Edit, Settings, Key } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ShoppingCart, Package, Users, BarChart3, Plus, Minus, Search, ShoppingBag, DollarSign, AlertCircle, LogOut, UserPlus, Trash2, Edit, Settings, Key, UserMinus } from 'lucide-react';
 
 
 const AlimentationShop = () => {
@@ -11,8 +11,9 @@ const AlimentationShop = () => {
   // User Management
   const [users, setUsers] = useState([
     { id: 1, username: 'boss', password: 'boss123', role: 'boss', name: 'Shop Owner', active: true },
-    { id: 2, username: 'sales1', password: 'sales123', role: 'sales', name: 'Jean Kagame', active: true },
-    { id: 3, username: 'sales2', password: 'sales456', role: 'sales', name: 'Marie Bizimana', active: true },
+    { id: 2, username: 'manager1', password: 'manager123', role: 'manager', name: 'Alice Manager', active: true },
+    { id: 3, username: 'sales1', password: 'sales123', role: 'sales', name: 'Jean Kagame', active: true },
+    { id: 4, username: 'sales2', password: 'sales456', role: 'sales', name: 'Marie Bizimana', active: true },
   ]);
 
   const [newUser, setNewUser] = useState({ username: '', password: '', name: '', role: 'sales' });
@@ -165,10 +166,14 @@ const AlimentationShop = () => {
 
   const completeSale = () => {
     if (cart.length === 0) return;
-    
     const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-    
+    // Capture product details for the sale
+    const itemsDetail = cart.map(item => ({
+      name: item.name,
+      price: item.price,
+      quantity: item.quantity
+    }));
     const newSale = {
       id: sales.length + 1,
       date: new Date().toISOString().split('T')[0],
@@ -176,7 +181,8 @@ const AlimentationShop = () => {
       total: total,
       items: totalItems,
       soldBy: currentUser.name,
-      soldById: currentUser.id
+      soldById: currentUser.id,
+      itemsDetail // <-- add this field
     };
     
     // Update stock automatically
@@ -207,9 +213,18 @@ const AlimentationShop = () => {
   };
 
   // Product Management (Boss only)
+  const [editingProduct, setEditingProduct] = useState(null);
+
   const addProduct = () => {
     if (!newProduct.name || !newProduct.price) return;
-    
+    // Check for duplicate product name (case-insensitive)
+    if (products.some(p => p.name.toLowerCase() === newProduct.name.toLowerCase())) {
+      setNotifications(notifications => [
+        ...notifications,
+        { type: 'error', message: `Product '${newProduct.name}' already exists!` }
+      ]);
+      return;
+    }
     const product = {
       id: products.length + 1,
       name: newProduct.name,
@@ -218,10 +233,37 @@ const AlimentationShop = () => {
       stock: parseInt(newProduct.stock) || 0,
       image: newProduct.image || '📦'
     };
-    
     setProducts([...products, product]);
     setNewProduct({ name: '', category: '', price: '', stock: '', image: '' });
     setShowAddProduct(false);
+  };
+
+  const startEditProduct = (product) => {
+    setEditingProduct({ ...product });
+  };
+
+  const cancelEditProduct = () => {
+    setEditingProduct(null);
+  };
+
+  const saveEditProduct = () => {
+    if (!editingProduct.name || !editingProduct.price) return;
+    // Check for duplicate name (except for self)
+    if (products.some(p => p.id !== editingProduct.id && p.name.toLowerCase() === editingProduct.name.toLowerCase())) {
+      setNotifications(notifications => [
+        ...notifications,
+        { type: 'error', message: `Product '${editingProduct.name}' already exists!` }
+      ]);
+      return;
+    }
+    setProducts(products.map(product =>
+      product.id === editingProduct.id ? { ...editingProduct, price: parseInt(editingProduct.price), stock: parseInt(editingProduct.stock) } : product
+    ));
+    setEditingProduct(null);
+    setNotifications(notifications => [
+      ...notifications,
+      { type: 'success', message: `Product '${editingProduct.name}' updated successfully!` }
+    ]);
   };
 
   const updateStock = (productId, newStock) => {
@@ -234,8 +276,8 @@ const AlimentationShop = () => {
   };
 
   const updatePrice = (productId, newPrice) => {
-    setProducts(products.map(product => 
-      product.id === productId 
+    setProducts(products.map(product =>
+      product.id === productId
         ? { ...product, price: parseInt(newPrice) }
         : product
     ));
@@ -297,6 +339,16 @@ const AlimentationShop = () => {
   const lowStockProducts = products.filter(product => product.stock < 10);
   const mySales = currentUser?.role === 'sales' ? sales.filter(sale => sale.soldById === currentUser.id) : sales;
 
+  // Notification system: auto-dismiss after 10 seconds
+  useEffect(() => {
+    if (notifications.length > 0) {
+      const timer = setTimeout(() => {
+        setNotifications((prev) => prev.slice(1));
+      }, 10000); // 10 seconds
+      return () => clearTimeout(timer);
+    }
+  }, [notifications]);
+
   // Login Screen
   if (showLogin) {
     return (
@@ -352,7 +404,9 @@ const AlimentationShop = () => {
             <div className="flex items-center space-x-4">
               <div className="text-right">
                 <p className="text-sm text-gray-600">Welcome, {currentUser.name}</p>
-                <p className="text-sm text-orange-600">{currentUser.role === 'boss' ? '👑 Boss' : '👨‍💼 Sales Person'}</p>
+                <p className="text-sm text-orange-600">
+                  {currentUser.role === 'boss' ? '👑 Boss' : currentUser.role === 'manager' ? '🧑‍💼 Manager' : '👨‍💼 Sales Person'}
+                </p>
               </div>
               <button
                 onClick={handleLogout}
@@ -371,10 +425,10 @@ const AlimentationShop = () => {
         <div className="container mx-auto px-6">
           <div className="flex space-x-8">
             {[
-              { id: 'pos', label: 'Point of Sale', icon: ShoppingCart, roles: ['boss', 'sales'] },
-              { id: 'inventory', label: 'Inventory', icon: Package, roles: ['boss', 'sales'] },
+              { id: 'pos', label: 'Point of Sale', icon: ShoppingCart, roles: ['boss', 'manager', 'sales'] },
+              { id: 'inventory', label: 'Inventory', icon: Package, roles: ['boss', 'manager', 'sales'] },
               { id: 'customers', label: 'Customers', icon: Users, roles: ['boss'] },
-              { id: 'reports', label: 'Reports', icon: BarChart3, roles: ['boss', 'sales'] },
+              { id: 'reports', label: 'Reports', icon: BarChart3, roles: ['boss', 'manager', 'sales'] },
               { id: 'users', label: 'User Management', icon: UserPlus, roles: ['boss'] },
               { id: 'settings', label: 'Settings', icon: Settings, roles: ['boss'] },
             ].filter(tab => tab.roles.includes(currentUser.role)).map(tab => (
@@ -400,7 +454,7 @@ const AlimentationShop = () => {
           {notifications.map((note, idx) => (
             <div
               key={idx}
-              className={`mb-2 px-4 py-3 rounded shadow-lg text-white font-semibold ${
+              className={`tsm-notification mb-2 px-4 py-3 rounded shadow-lg text-white font-semibold ${
                 note.type === 'error' ? 'bg-red-500' : 'bg-yellow-500'
               }`}
             >
@@ -569,39 +623,25 @@ const AlimentationShop = () => {
                 📦 Inventory {currentUser.role === 'sales' ? '- View Only' : 'Management'}
               </h2>
               <div className="flex flex-col sm:flex-row gap-3">
+                {/* Global search for both boss and sales */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="🔍 Global Search (name, category, price)..."
+                    value={globalSearch}
+                    onChange={(e) => setGlobalSearch(e.target.value)}
+                    className={`pl-10 pr-4 py-2 border rounded-lg focus:ring-2 w-full sm:w-80 ${currentUser.role === 'boss' ? 'border-orange-300 focus:ring-orange-500 focus:border-orange-500' : 'border-blue-300 focus:ring-blue-500 focus:border-blue-500'}`}
+                  />
+                </div>
                 {currentUser.role === 'boss' && (
-                  <>
-                    <div className="relative">
-                      <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                      <input
-                        type="text"
-                        placeholder="🔍 Global Search (name, category, price)..."
-                        value={globalSearch}
-                        onChange={(e) => setGlobalSearch(e.target.value)}
-                        className="pl-10 pr-4 py-2 border border-orange-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 w-full sm:w-80"
-                      />
-                    </div>
-                    <button
-                      onClick={() => setShowAddProduct(!showAddProduct)}
-                      className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 flex items-center space-x-2 whitespace-nowrap"
-                    >
-                      <Plus className="w-4 h-4" />
-                      <span>Add Product</span>
-                    </button>
-                  </>
-                )}
-                
-                {currentUser.role === 'sales' && (
-                  <div className="relative">
-                    <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="🔍 Search products to check stock..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10 pr-4 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full sm:w-80"
-                    />
-                  </div>
+                  <button
+                    onClick={() => setShowAddProduct(!showAddProduct)}
+                    className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 flex items-center space-x-2 whitespace-nowrap"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Add Product</span>
+                  </button>
                 )}
               </div>
             </div>
@@ -721,21 +761,7 @@ const AlimentationShop = () => {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-gray-600">{product.category}</td>
-                        <td className="px-6 py-4 whitespace-nowrap font-semibold text-orange-600">
-                          {priceUpdate.productId === product.id ? (
-                            <div className="flex items-center space-x-2">
-                              <input
-                                type="number"
-                                value={priceUpdate.newPrice}
-                                onChange={(e) => setPriceUpdate({...priceUpdate, newPrice: e.target.value})}
-                                className="w-24 px-2 py-1 border rounded focus:ring-2 focus:ring-orange-500"
-                              />
-                              <span className="text-sm">RWF</span>
-                            </div>
-                          ) : (
-                            <span>{product.price.toLocaleString()} RWF</span>
-                          )}
-                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap font-semibold text-orange-600">{product.price.toLocaleString()} RWF</td>
                         <td className="px-6 py-4 whitespace-nowrap">{product.stock}</td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`px-2 py-1 text-xs rounded-full ${
@@ -752,84 +778,20 @@ const AlimentationShop = () => {
                         {currentUser.role === 'boss' && (
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center space-x-2">
-                              {/* Stock Update */}
-                              {stockUpdate.productId === product.id ? (
-                                <>
-                                  <input
-                                    type="number"
-                                    value={stockUpdate.newStock}
-                                    onChange={(e) => setStockUpdate({...stockUpdate, newStock: e.target.value})}
-                                    className="w-16 px-2 py-1 border rounded focus:ring-2 focus:ring-orange-500"
-                                  />
-                                  <button
-                                    onClick={() => updateStock(product.id, stockUpdate.newStock)}
-                                    className="bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600"
-                                  >
-                                    ✓
-                                  </button>
-                                  <button
-                                    onClick={() => setStockUpdate({ productId: null, newStock: '' })}
-                                    className="bg-gray-500 text-white px-2 py-1 rounded text-xs hover:bg-gray-600"
-                                  >
-                                    ✕
-                                  </button>
-                                </>
-                              ) : priceUpdate.productId === product.id ? (
-                                <>
-                                  <button
-                                    onClick={() => updatePrice(product.id, priceUpdate.newPrice)}
-                                    className="bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600"
-                                  >
-                                    Save Price
-                                  </button>
-                                  <button
-                                    onClick={() => setPriceUpdate({ productId: null, newPrice: '' })}
-                                    className="bg-gray-500 text-white px-2 py-1 rounded text-xs hover:bg-gray-600"
-                                  >
-                                    Cancel
-                                  </button>
-                                </>
-                              ) : deleteConfirm.productId === product.id ? (
-                                <>
-                                  <span className="text-red-600 text-xs font-semibold">Delete?</span>
-                                  <button
-                                    onClick={() => deleteProduct(product.id)}
-                                    className="bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-red-600"
-                                  >
-                                    Yes
-                                  </button>
-                                  <button
-                                    onClick={() => setDeleteConfirm({ productId: null, productName: '' })}
-                                    className="bg-gray-500 text-white px-2 py-1 rounded text-xs hover:bg-gray-600"
-                                  >
-                                    No
-                                  </button>
-                                </>
-                              ) : (
-                                <>
-                                  <button
-                                    onClick={() => setStockUpdate({ productId: product.id, newStock: product.stock })}
-                                    className="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600"
-                                    title="Update Stock"
-                                  >
-                                    Stock
-                                  </button>
-                                  <button
-                                    onClick={() => setPriceUpdate({ productId: product.id, newPrice: product.price })}
-                                    className="bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600"
-                                    title="Update Price"
-                                  >
-                                    <Edit className="w-3 h-3" />
-                                  </button>
-                                  <button
-                                    onClick={() => setDeleteConfirm({ productId: product.id, productName: product.name })}
-                                    className="bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-red-600"
-                                    title="Delete Product"
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                  </button>
-                                </>
-                              )}
+                              <button
+                                onClick={() => startEditProduct(product)}
+                                className="bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600 flex items-center"
+                                title="Edit Product"
+                              >
+                                <Edit className="w-3 h-3 mr-1" />Edit
+                              </button>
+                              <button
+                                onClick={() => setDeleteConfirm({ productId: product.id, productName: product.name })}
+                                className="bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-red-600"
+                                title="Delete Product"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
                             </div>
                           </td>
                         )}
@@ -839,6 +801,72 @@ const AlimentationShop = () => {
                 </table>
               </div>
             </div>
+            {/* Edit Product Modal (Boss only) */}
+            {currentUser.role === 'boss' && editingProduct && (
+              <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+                <div className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-lg relative animate-fade-in-down">
+                  <button
+                    onClick={cancelEditProduct}
+                    className="absolute top-3 right-3 text-gray-400 hover:text-red-500 text-2xl font-bold"
+                    title="Close"
+                  >
+                    ×
+                  </button>
+                  <h3 className="text-lg font-semibold mb-4">Edit Product</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                    <input
+                      type="text"
+                      placeholder="Product name"
+                      value={editingProduct.name}
+                      onChange={e => setEditingProduct({ ...editingProduct, name: e.target.value })}
+                      className="px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 col-span-2"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Category"
+                      value={editingProduct.category}
+                      onChange={e => setEditingProduct({ ...editingProduct, category: e.target.value })}
+                      className="px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500"
+                    />
+                    <input
+                      type="number"
+                      placeholder="Price (RWF)"
+                      value={editingProduct.price}
+                      onChange={e => setEditingProduct({ ...editingProduct, price: e.target.value })}
+                      className="px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500"
+                    />
+                    <input
+                      type="number"
+                      placeholder="Stock"
+                      value={editingProduct.stock}
+                      onChange={e => setEditingProduct({ ...editingProduct, stock: e.target.value })}
+                      className="px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Emoji"
+                      value={editingProduct.image}
+                      onChange={e => setEditingProduct({ ...editingProduct, image: e.target.value })}
+                      className="px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500"
+                    />
+                  </div>
+                  <div className="flex space-x-3 mt-4">
+                    <button
+                      onClick={saveEditProduct}
+                      className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600"
+                    >
+                      Save Changes
+                    </button>
+                    <button
+                      onClick={cancelEditProduct}
+                      className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -870,28 +898,45 @@ const AlimentationShop = () => {
         {activeTab === 'reports' && (
           <div className="space-y-6">
             <h2 className="text-2xl font-bold text-gray-800">📊 Sales Reports</h2>
-            
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="bg-gradient-to-br from-green-500 to-green-600 text-white rounded-xl shadow-lg p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-green-100">{currentUser.role === 'sales' ? 'My Revenue' : 'Total Revenue'}</p>
-                    <p className="text-3xl font-bold">{mySales.reduce((sum, sale) => sum + sale.total, 0).toLocaleString()} RWF</p>
+                    <p className="text-green-100">{
+                      currentUser.role === 'sales' ? 'My Revenue' :
+                      currentUser.role === 'manager' ? 'Manager Revenue' :
+                      'Total Revenue'
+                    }</p>
+                    <p className="text-3xl font-bold">{
+                      currentUser.role === 'sales'
+                        ? mySales.reduce((sum, sale) => sum + sale.total, 0).toLocaleString()
+                        : currentUser.role === 'manager'
+                          ? sales.filter(sale => users.find(u => u.id === sale.soldById && u.role === 'manager')).reduce((sum, sale) => sum + sale.total, 0).toLocaleString()
+                          : sales.reduce((sum, sale) => sum + sale.total, 0).toLocaleString()
+                    } RWF</p>
                   </div>
                   <DollarSign className="w-12 h-12 text-green-200" />
                 </div>
               </div>
-              
               <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-xl shadow-lg p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-blue-100">{currentUser.role === 'sales' ? 'My Sales' : 'Total Sales'}</p>
-                    <p className="text-3xl font-bold">{mySales.length}</p>
+                    <p className="text-blue-100">{
+                      currentUser.role === 'sales' ? 'My Sales' :
+                      currentUser.role === 'manager' ? 'Manager Sales' :
+                      'Total Sales'
+                    }</p>
+                    <p className="text-3xl font-bold">{
+                      currentUser.role === 'sales'
+                        ? mySales.length
+                        : currentUser.role === 'manager'
+                          ? sales.filter(sale => users.find(u => u.id === sale.soldById && u.role === 'manager')).length
+                          : sales.length
+                    }</p>
                   </div>
                   <ShoppingCart className="w-12 h-12 text-blue-200" />
                 </div>
               </div>
-              
               <div className="bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-xl shadow-lg p-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -902,10 +947,14 @@ const AlimentationShop = () => {
                 </div>
               </div>
             </div>
-
+            {/* Sales Table */}
             <div className="bg-white rounded-xl shadow-lg overflow-hidden">
               <div className="px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-800">{currentUser.role === 'sales' ? 'My Sales' : 'Recent Sales'}</h3>
+                <h3 className="text-lg font-semibold text-gray-800">{
+                  currentUser.role === 'sales' ? 'My Sales' :
+                  currentUser.role === 'manager' ? 'Manager Sales' :
+                  'Recent Sales'
+                }</h3>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
@@ -921,7 +970,12 @@ const AlimentationShop = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {mySales.map(sale => (
+                    {(currentUser.role === 'sales'
+                      ? mySales
+                      : currentUser.role === 'manager'
+                        ? sales.filter(sale => users.find(u => u.id === sale.soldById && u.role === 'manager'))
+                        : sales
+                    ).map(sale => (
                       <tr key={sale.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap text-gray-600">{sale.date}</td>
                         <td className="px-6 py-4 whitespace-nowrap font-medium">{sale.customer}</td>
@@ -934,6 +988,77 @@ const AlimentationShop = () => {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </div>
+            {/* Daily Sales Breakdown */}
+            <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-800">Daily Sales Breakdown</h3>
+              </div>
+              <div className="overflow-x-auto">
+                {(() => {
+                  // Group sales by date
+                  const salesByDate = {};
+                  sales.forEach(sale => {
+                    if (!salesByDate[sale.date]) salesByDate[sale.date] = [];
+                    salesByDate[sale.date].push(sale);
+                  });
+                  const dates = Object.keys(salesByDate).sort((a, b) => b.localeCompare(a));
+                  return dates.length === 0 ? (
+                    <div className="p-6 text-gray-500">No sales data available.</div>
+                  ) : (
+                    dates.map(date => {
+                      const daySales = salesByDate[date];
+                      const totalDayAmount = daySales.reduce((sum, s) => sum + s.total, 0);
+                      // Aggregate product sales for the day
+                      const productMap = {};
+                      daySales.forEach(sale => {
+                        if (sale.itemsDetail) {
+                          sale.itemsDetail.forEach(item => {
+                            if (!productMap[item.name]) {
+                              productMap[item.name] = { ...item, quantity: 0, total: 0 };
+                            }
+                            productMap[item.name].quantity += item.quantity;
+                            productMap[item.name].total += item.price * item.quantity;
+                          });
+                        }
+                      });
+                      const productsSold = Object.values(productMap);
+                      return (
+                        <div key={date} className="border-b last:border-b-0">
+                          <div className="bg-gray-50 px-6 py-3 flex justify-between items-center">
+                            <span className="font-semibold text-gray-700">{date}</span>
+                            <span className="font-bold text-green-700">Total: {totalDayAmount.toLocaleString()} RWF</span>
+                          </div>
+                          <div className="overflow-x-auto">
+                            <table className="w-full">
+                              <thead>
+                                <tr>
+                                  <th className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
+                                  <th className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase">Quantity Sold</th>
+                                  <th className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase">Total Amount</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-200">
+                                {productsSold.length === 0 ? (
+                                  <tr><td colSpan="3" className="px-6 py-3 text-gray-400">No product details</td></tr>
+                                ) : (
+                                  productsSold.map(prod => (
+                                    <tr key={prod.name}>
+                                      <td className="px-6 py-3 whitespace-nowrap">{prod.name}</td>
+                                      <td className="px-6 py-3 whitespace-nowrap">{prod.quantity}</td>
+                                      <td className="px-6 py-3 whitespace-nowrap">{prod.total.toLocaleString()} RWF</td>
+                                    </tr>
+                                  ))
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      );
+                    })
+                  );
+                })()}
               </div>
             </div>
           </div>
@@ -1052,7 +1177,6 @@ const AlimentationShop = () => {
                 <span>Add User</span>
               </button>
             </div>
-
             {showAddUser && (
               <div className="bg-white rounded-xl shadow-lg p-6">
                 <h3 className="text-lg font-semibold mb-4">Add New User</h3>
@@ -1084,6 +1208,7 @@ const AlimentationShop = () => {
                     className="px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500"
                   >
                     <option value="sales">Sales Person</option>
+                    <option value="manager">Manager</option>
                     <option value="boss">Boss</option>
                   </select>
                 </div>
@@ -1103,14 +1228,14 @@ const AlimentationShop = () => {
                 </div>
               </div>
             )}
-
+            
             <div className="bg-white rounded-xl shadow-lg overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Username</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Full Name</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
@@ -1119,40 +1244,44 @@ const AlimentationShop = () => {
                   <tbody className="divide-y divide-gray-200">
                     {users.map(user => (
                       <tr key={user.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center space-x-3">
-                            <span className="text-2xl">{user.role === 'boss' ? '👑' : '👨‍💼'}</span>
-                            <span className="font-medium">{user.name}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-gray-600">{user.username}</td>
+                        <td className="px-6 py-4 whitespace-nowrap font-medium">{user.username}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{user.name}</td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`px-2 py-1 text-xs rounded-full ${
-                            user.role === 'boss' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
+                            user.role === 'boss' ? 'bg-yellow-100 text-yellow-800' :
+                            user.role === 'manager' ? 'bg-blue-100 text-blue-800' :
+                            'bg-green-100 text-green-800'
                           }`}>
-                            {user.role === 'boss' ? 'Boss' : 'Sales Person'}
+                            {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`px-2 py-1 text-xs rounded-full ${
                             user.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                           }`}>
-                            {user.active ? 'Active' : 'Deactivated'}
+                            {user.active ? 'Active' : 'Inactive'}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          {user.id !== currentUser.id && (
+                          <div className="flex items-center space-x-2">
                             <button
                               onClick={() => toggleUserStatus(user.id)}
-                              className={`px-3 py-1 rounded text-sm ${
-                                user.active 
-                                  ? 'bg-red-500 text-white hover:bg-red-600' 
-                                  : 'bg-green-500 text-white hover:bg-green-600'
+                              className={`px-3 py-1 rounded text-xs font-semibold transition-all flex items-center space-x-1 ${
+                                user.active ? 'bg-red-500 text-white hover:bg-red-600' : 'bg-green-500 text-white hover:bg-green-600'
                               }`}
+                              title={user.active ? 'Deactivate User' : 'Activate User'}
                             >
-                              {user.active ? 'Deactivate' : 'Activate'}
+                              {user.active ? <UserMinus className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
+                              <span>{user.active ? 'Deactivate' : 'Activate'}</span>
                             </button>
-                          )}
+                            <button
+                              onClick={() => setDeleteConfirm({ productId: user.id, productName: user.name })}
+                              className="bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-red-600 flex items-center"
+                              title="Delete User"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -1160,6 +1289,35 @@ const AlimentationShop = () => {
                 </table>
               </div>
             </div>
+            {/* Delete Confirmation Modal */}
+            {deleteConfirm.productId && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-md">
+                  <h3 className="text-lg font-semibold mb-4">Confirm Deletion</h3>
+                  <p className="text-gray-700 mb-6">
+                    Are you sure you want to delete the user <strong>{deleteConfirm.productName}</strong>? This action cannot be undone.
+                  </p>
+                  <div className="flex space-x-3">
+                    <button
+                      onClick={() => {
+                        setUsers(users.filter(user => user.id !== deleteConfirm.productId));
+                        setDeleteConfirm({ productId: null, productName: '' });
+                        alert('User deleted successfully!');
+                      }}
+                      className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 w-full"
+                    >
+                      Delete User
+                    </button>
+                    <button
+                      onClick={() => setDeleteConfirm({ productId: null, productName: '' })}
+                      className="bg-gray-300 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-400 w-full"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

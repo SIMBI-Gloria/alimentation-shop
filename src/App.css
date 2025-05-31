@@ -61,3 +61,16 @@ body::before {
   0% { background-position: 80% 20%, 20% 80%; }
   100% { background-position: 60% 40%, 40% 60%; }
 }
+
+/* Notification fade-in and fade-out animation */
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translateY(-20px) scale(0.95); }
+  10% { opacity: 1; transform: translateY(0) scale(1); }
+  90% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-20px) scale(0.95); }
+}
+
+.tsm-notification {
+  animation: fadeInOut 3s cubic-bezier(0.4,0,0.2,1);
+  will-change: opacity, transform;
+}
