@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ShoppingCart, Package, Users, BarChart3, Plus, Minus, Search, ShoppingBag, DollarSign, AlertCircle, LogOut, UserPlus, Trash2, Edit, Settings, Key, UserMinus, Eye, EyeOff } from 'lucide-react';
-
+import axios from 'axios';
 
 const AlimentationShop = () => {
   // Authentication States
@@ -9,42 +9,20 @@ const AlimentationShop = () => {
   const [showLogin, setShowLogin] = useState(true);
 
   // User Management
-  const [users, setUsers] = useState([
-    { id: 1, username: 'boss', password: 'boss123', role: 'boss', name: 'Shop Owner', active: true },
-    { id: 2, username: 'manager1', password: 'manager123', role: 'manager', name: 'Alice Manager', active: true },
-    { id: 3, username: 'sales1', password: 'sales123', role: 'sales', name: 'Jean Kagame', active: true },
-    { id: 4, username: 'sales2', password: 'sales456', role: 'sales', name: 'Marie Bizimana', active: true },
-  ]);
-
+  const [users, setUsers] = useState([]);
   const [newUser, setNewUser] = useState({ username: '', password: '', name: '', role: 'sales' });
   const [showAddUser, setShowAddUser] = useState(false);
 
   // Main States
   const [activeTab, setActiveTab] = useState('pos');
-  const [products, setProducts] = useState([
-    { id: 1, name: 'Bread', category: 'Bakery', price: 800, stock: 25, image: '🍞' },
-    { id: 2, name: 'Milk', category: 'Dairy', price: 1200, stock: 15, image: '🥛' },
-    { id: 3, name: 'Apples', category: 'Fruits', price: 2500, stock: 30, image: '🍎' },
-    { id: 4, name: 'Bananas', category: 'Fruits', price: 1500, stock: 20, image: '🍌' },
-    { id: 5, name: 'Cheese', category: 'Dairy', price: 3500, stock: 12, image: '🧀' },
-    { id: 6, name: 'Tomatoes', category: 'Vegetables', price: 1800, stock: 18, image: '🍅' },
-    { id: 7, name: 'Pasta', category: 'Pantry', price: 900, stock: 40, image: '🍝' },
-    { id: 8, name: 'Eggs', category: 'Dairy', price: 2000, stock: 22, image: '🥚' },
-  ]);
-  
+  const [products, setProducts] = useState([]);
   const [cart, setCart] = useState([]);
   const [customers] = useState([
     { id: 1, name: 'Marie Uwimana', phone: '078-123-4567', totalPurchases: 125000 },
     { id: 2, name: 'Jean Nzeyimana', phone: '079-987-6543', totalPurchases: 98000 },
     { id: 3, name: 'Sophie Mukamana', phone: '072-555-1234', totalPurchases: 156000 },
   ]);
-  
-  const [sales, setSales] = useState([
-    { id: 1, date: '2025-05-25', customer: 'Marie Uwimana', total: 7800, items: 3, soldBy: 'Jean Kagame', soldById: 2 },
-    { id: 2, date: '2025-05-25', customer: 'Walk-in', total: 4500, items: 2, soldBy: 'Marie Bizimana', soldById: 3 },
-    { id: 3, date: '2025-05-24', customer: 'Jean Nzeyimana', total: 12000, items: 5, soldBy: 'Jean Kagame', soldById: 2 },
-  ]);
-  
+  const [sales, setSales] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [globalSearch, setGlobalSearch] = useState('');
   const [newProduct, setNewProduct] = useState({ name: '', category: '', price: '', stock: '', image: '' });
@@ -95,24 +73,24 @@ const AlimentationShop = () => {
       return;
     }
     
-    const user = {
-      id: users.length + 1,
-      ...newUser,
-      active: true
-    };
-    
-    setUsers([...users, user]);
-    setNewUser({ username: '', password: '', name: '', role: 'sales' });
-    setShowAddUser(false);
-    alert('User added successfully');
+    axios.post('http://localhost:5000/api/users', newUser)
+      .then(res => {
+        setUsers([...users, res.data]);
+        setNewUser({ username: '', password: '', name: '', role: 'sales' });
+        setShowAddUser(false);
+        alert('User added successfully');
+      })
+      .catch(() => alert('Failed to add user'));
   };
 
   const toggleUserStatus = (userId) => {
-    setUsers(users.map(user => 
-      user.id === userId 
-        ? { ...user, active: !user.active }
-        : user
-    ));
+    const user = users.find(u => u.id === userId);
+    if (!user) return;
+    axios.put(`http://localhost:5000/api/users/${userId}`, { ...user, active: !user.active })
+      .then(res => {
+        setUsers(users.map(u => u.id === userId ? res.data : u));
+      })
+      .catch(() => alert('Failed to update user status'));
   };
 
   // Cart and Sales Functions
@@ -169,48 +147,47 @@ const AlimentationShop = () => {
     if (cart.length === 0) return;
     const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-    // Capture product details for the sale
     const itemsDetail = cart.map(item => ({
       name: item.name,
       price: item.price,
       quantity: item.quantity
     }));
     const newSale = {
-      id: sales.length + 1,
       date: new Date().toISOString().split('T')[0],
       customer: 'Walk-in',
       total: total,
       items: totalItems,
       soldBy: currentUser.name,
       soldById: currentUser.id,
-      itemsDetail // <-- add this field
+      itemsDetail
     };
-    
-    // Update stock automatically
-    const updatedProducts = products.map(product => {
-      const cartItem = cart.find(item => item.id === product.id);
-      if (cartItem) {
-        const newStock = product.stock - cartItem.quantity;
-        if (newStock === 0) {
-          setNotifications(notifications => [
-            ...notifications,
-            { type: 'warning', message: `Product '${product.name}' is now out of stock!` }
-          ]);
+    axios.post('http://localhost:5000/api/sales', newSale)
+      .then(res => {
+        setSales([res.data, ...sales]);
+        // Update stock locally
+        const updatedProducts = products.map(product => {
+          const cartItem = cart.find(item => item.id === product.id);
+          if (cartItem) {
+            const newStock = product.stock - cartItem.quantity;
+            if (newStock === 0) {
+              setNotifications(notifications => [
+                ...notifications,
+                { type: 'warning', message: `Product '${product.name}' is now out of stock!` }
+              ]);
+            }
+            return { ...product, stock: newStock };
+          }
+          return product;
+        });
+        setProducts(updatedProducts);
+        setCart([]);
+        if (currentUser.role === 'sales') {
+          alert(`✅ Sale Completed Successfully!\n\n💰 Total: ${total.toLocaleString()} RWF\n📦 Items Sold: ${totalItems}\n🔄 Stock Updated Automatically\n\nGreat job, ${currentUser.name}!`);
+        } else {
+          alert(`Sale completed! Total: ${total.toLocaleString()} RWF`);
         }
-        return { ...product, stock: newStock };
-      }
-      return product;
-    });
-    setProducts(updatedProducts);
-    
-    setSales([newSale, ...sales]);
-    setCart([]);
-    
-    if (currentUser.role === 'sales') {
-      alert(`✅ Sale Completed Successfully!\n\n💰 Total: ${total.toLocaleString()} RWF\n📦 Items Sold: ${totalItems}\n🔄 Stock Updated Automatically\n\nGreat job, ${currentUser.name}!`);
-    } else {
-      alert(`Sale completed! Total: ${total.toLocaleString()} RWF`);
-    }
+      })
+      .catch(() => alert('Failed to complete sale'));
   };
 
   // Product Management (Boss only)
@@ -227,16 +204,19 @@ const AlimentationShop = () => {
       return;
     }
     const product = {
-      id: products.length + 1,
       name: newProduct.name,
       category: newProduct.category || 'Other',
       price: parseInt(newProduct.price) || 0,
       stock: parseInt(newProduct.stock) || 0,
       image: newProduct.image || '📦'
     };
-    setProducts([...products, product]);
-    setNewProduct({ name: '', category: '', price: '', stock: '', image: '' });
-    setShowAddProduct(false);
+    axios.post('http://localhost:5000/api/products', product)
+      .then(res => {
+        setProducts([...products, res.data]);
+        setNewProduct({ name: '', category: '', price: '', stock: '', image: '' });
+        setShowAddProduct(false);
+      })
+      .catch(() => alert('Failed to add product'));
   };
 
   const startEditProduct = (product) => {
@@ -257,20 +237,32 @@ const AlimentationShop = () => {
       ]);
       return;
     }
-    setProducts(products.map(product =>
-      product.id === editingProduct.id ? { ...editingProduct, price: parseInt(editingProduct.price), stock: parseInt(editingProduct.stock) } : product
-    ));
-    setEditingProduct(null);
-    setNotifications(notifications => [
-      ...notifications,
-      { type: 'success', message: `Product '${editingProduct.name}' updated successfully!` }
-    ]);
+    axios.put(`http://localhost:5000/api/products/${editingProduct.id}`, {
+      ...editingProduct,
+      price: parseInt(editingProduct.price),
+      stock: parseInt(editingProduct.stock)
+    })
+      .then(res => {
+        setProducts(products.map(product =>
+          product.id === editingProduct.id ? res.data : product
+        ));
+        setEditingProduct(null);
+        setNotifications(notifications => [
+          ...notifications,
+          { type: 'success', message: `Product '${editingProduct.name}' updated successfully!` }
+        ]);
+      })
+      .catch(() => alert('Failed to update product'));
   };
 
   const deleteProduct = (productId) => {
-    setProducts(products.filter(product => product.id !== productId));
-    setDeleteConfirm({ productId: null, productName: '' });
-    alert('Product deleted successfully!');
+    axios.delete(`http://localhost:5000/api/products/${productId}`)
+      .then(() => {
+        setProducts(products.filter(product => product.id !== productId));
+        setDeleteConfirm({ productId: null, productName: '' });
+        alert('Product deleted successfully!');
+      })
+      .catch(() => alert('Failed to delete product'));
   };
 
   const changePassword = () => {
@@ -330,6 +322,19 @@ const AlimentationShop = () => {
       return () => clearTimeout(timer);
     }
   }, [notifications]);
+
+  // Fetch users, products, and sales from backend on mount
+  useEffect(() => {
+    axios.get('http://localhost:5000/api/users')
+      .then(res => setUsers(res.data))
+      .catch(err => console.error('Error fetching users:', err));
+    axios.get('http://localhost:5000/api/products')
+      .then(res => setProducts(res.data))
+      .catch(err => console.error('Error fetching products:', err));
+    axios.get('http://localhost:5000/api/sales')
+      .then(res => setSales(res.data))
+      .catch(err => console.error('Error fetching sales:', err));
+  }, []);
 
   // Login Screen
   if (showLogin) {
